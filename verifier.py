@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 
-BIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "target/release/qr-a-la-main")
+BIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "target/release/qr")
 ALNUM = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:"
 
 

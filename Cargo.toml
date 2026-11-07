@@ -1,6 +1,12 @@
 [package]
 name = "qr-a-la-main"
+description = "Générateur de QR codes écrit de zéro"
+license = "MIT"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+
+[[bin]]
+name = "qr"
+path = "src/main.rs"
