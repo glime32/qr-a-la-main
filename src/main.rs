@@ -9,7 +9,7 @@ use std::process::exit;
 const AIDE: &str = "\
 qr — génère un QR code, sans bibliothèque
 
-usage : qr [options] [texte]        (sans texte : lit l'entrée standard)
+usage : qr [options] [--] [texte]        (sans texte : lit l'entrée standard)
 
   -e, --ecc L|M|Q|H     niveau de correction (défaut M : ~15 % du symbole peut être abîmé)
   -v, --version N       forcer la version (1 à 40)
@@ -33,7 +33,18 @@ fn main() {
     let (mut png, mut svg, mut scale, mut light, mut details) = (None, None, 8, false, false);
     let mut text: Option<String> = None;
 
+    let mut options_done = false;
     while let Some(a) = args.next() {
+        if options_done || a == "--" {
+            if a != "--" || options_done {
+                text = Some(match text {
+                    None => a,
+                    Some(t) => t + " " + &a,
+                });
+            }
+            options_done = true;
+            continue;
+        }
         let mut value = |name: &str| args.next().unwrap_or_else(|| fail(&format!("{name} attend une valeur")));
         match a.as_str() {
             "-h" | "--aide" | "--help" => {

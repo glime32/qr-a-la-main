@@ -190,8 +190,16 @@ impl Bits {
     }
 }
 
-fn encode_segments(segs: &[Segment], ver: usize, capacity: usize) -> Vec<u8> {
+// En-tête ECI 26 = « la suite est en UTF-8 ». Sans lui beaucoup de lecteurs
+// devinent l'encodage, et transforment « ça » en idéogrammes.
+const ECI_UTF8_BITS: usize = 4 + 8;
+
+fn encode_segments(segs: &[Segment], ver: usize, capacity: usize, utf8: bool) -> Vec<u8> {
     let mut bits = Bits(Vec::new());
+    if utf8 {
+        bits.push(0b0111, 4);
+        bits.push(26, 8);
+    }
     for s in segs {
         bits.push(s.mode.indicator(), 4);
         bits.push(s.data.len() as u32, s.mode.count_bits(ver));
@@ -299,10 +307,12 @@ impl Qr {
         if opt.min_version < 1 || opt.max_version > 40 || opt.min_version > opt.max_version {
             return Err(Error::BadVersion);
         }
+        let utf8 = !text.is_ascii() && std::str::from_utf8(text).is_ok();
+        let extra = if utf8 { ECI_UTF8_BITS } else { 0 };
         let mut found = None;
         for ver in opt.min_version..=opt.max_version {
             let segs = segment(text, ver);
-            if let Some(used) = segments_bits(&segs, ver) {
+            if let Some(used) = segments_bits(&segs, ver).map(|b| b + extra) {
                 if used <= data_codewords(ver, opt.ecc) * 8 {
                     found = Some((ver, segs, used));
                     break;
@@ -320,7 +330,7 @@ impl Qr {
             }
         }
         let gf = Tables::new();
-        let data = encode_segments(&segs, ver, data_codewords(ver, ecc));
+        let data = encode_segments(&segs, ver, data_codewords(ver, ecc), utf8);
         let codewords = add_ecc_and_interleave(&gf, &data, ver, ecc);
 
         let size = ver * 4 + 17;
@@ -598,7 +608,7 @@ mod tests {
         let segs = segment(b"HELLO WORLD", 1);
         assert_eq!(segs.len(), 1);
         assert_eq!(segs[0].mode, Mode::Alnum);
-        let data = encode_segments(&segs, 1, data_codewords(1, Ecc::M));
+        let data = encode_segments(&segs, 1, data_codewords(1, Ecc::M), false);
         assert_eq!(data, vec![32, 91, 11, 120, 209, 114, 220, 77, 67, 64, 236, 17, 236, 17, 236, 17]);
     }
 
