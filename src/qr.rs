@@ -312,11 +312,11 @@ impl Qr {
         let mut found = None;
         for ver in opt.min_version..=opt.max_version {
             let segs = segment(text, ver);
-            if let Some(used) = segments_bits(&segs, ver).map(|b| b + extra) {
-                if used <= data_codewords(ver, opt.ecc) * 8 {
-                    found = Some((ver, segs, used));
-                    break;
-                }
+            if let Some(used) = segments_bits(&segs, ver).map(|b| b + extra)
+                && used <= data_codewords(ver, opt.ecc) * 8
+            {
+                found = Some((ver, segs, used));
+                break;
             }
         }
         let (ver, segs, used) = found.ok_or(Error::TooLong)?;
@@ -558,7 +558,7 @@ impl Qr {
         }
         let dark = self.modules.iter().filter(|&&m| m).count() as u32;
         let total = (s * s) as u32;
-        let k = ((dark * 20).abs_diff(total * 10) + total - 1) / total - 1;
+        let k = (dark * 20).abs_diff(total * 10).div_ceil(total) - 1;
         p + k * 10
     }
 }
