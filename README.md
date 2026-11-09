@@ -1,8 +1,12 @@
-# qr-a-la-main
+<p align="center"><img src="docs/banner-qr-a-la-main.png" alt="qr-a-la-main" width="100%"></p>
 
-Un générateur de QR codes en Rust, sans aucune dépendance. Je voulais comprendre ce qu'il y a vraiment dans ces petits carrés, donc tout est refait : codes de Reed-Solomon, découpage en blocs, placement des bits, masques.
+<p align="center"><img src="https://img.shields.io/badge/Rust-no%20dependencies-dea584?style=flat-square" alt="Rust"> <img src="https://img.shields.io/badge/license-MIT-610089?style=flat-square" alt="license"></p>
 
-![QR code vers ce dépôt](images/depot.png)
+A QR code generator in Rust, with no dependencies at all. I wanted to understand what's really inside those little squares, so everything is done by hand: Reed-Solomon codes, splitting into blocks, bit placement, masks.
+
+<p align="center"><a href="README.fr.md">🇫🇷 Version française</a></p>
+
+![QR code pointing to this repo](images/depot.png)
 
 ```
 $ cargo build --release
@@ -12,9 +16,9 @@ $ ./target/release/qr -e H --svg carte.svg "BEGIN:VCARD ..."
 $ echo "texte long" | ./target/release/qr
 ```
 
-Le QR s'affiche directement dans le terminal (deux modules par caractère avec `▀ ▄ █`), ou en PNG / SVG. Options : niveau de correction (`-e L|M|Q|H`), version et masque forcés, `--boost` pour prendre la meilleure correction qui tient dans la même taille, `--clair` pour les terminaux à fond blanc.
+The QR code is printed straight into the terminal (two modules per character with `▀ ▄ █`), or as PNG / SVG. Options: error correction level (`-e L|M|Q|H`), forced version and mask, `--boost` to take the best correction that fits in the same size, `--clair` for terminals with a white background.
 
-`-d` montre comment le symbole a été construit :
+`-d` shows how the symbol was built (the program talks French: `segment octets` = byte segment, `masque` = mask, `pénalités` = penalties):
 
 ```
 $ ./target/release/qr -d "Commande 4211 : 0612345678"
@@ -26,28 +30,28 @@ version 2 (25×25 modules), correction M, masque 2
   pénalités des masques : 0:529  1:499  2:487  3:583  4:676  5:699  6:589  7:666
 ```
 
-## Ce qui se passe
+## What happens
 
-1. **Segments.** Un QR peut coder des chiffres (3 par 10 bits), de l'alphanumérique majuscule (2 par 11 bits) ou des octets. Le texte est découpé en segments par programmation dynamique pour minimiser le nombre total de bits (changer de mode coûte un en-tête, ça ne vaut pas toujours le coup). Pour le texte non ASCII, un en-tête ECI annonce de l'UTF-8 ; sans lui, certains lecteurs affichaient « ça » en idéogrammes.
-2. **Version.** La plus petite des 40 tailles où les données tiennent, avec le niveau de correction demandé.
-3. **Correction d'erreurs.** Les octets sont répartis en blocs, et chaque bloc reçoit des octets de Reed-Solomon : le reste de la division du message par un polynôme générateur, dans le corps fini GF(256). Puis les blocs sont entrelacés, pour qu'une tache sur le symbole abîme un peu chaque bloc plutôt que tout un bloc.
-4. **Matrice.** On pose les motifs fixes (les trois carrés de repérage, les lignes de synchronisation, les petits carrés d'alignement, les informations de version), puis les bits de données en zigzag, deux colonnes à la fois, de droite à gauche.
-5. **Masque.** Il y a 8 façons d'inverser un module sur deux, sur trois... On les essaie toutes et on garde celle qui a la plus petite pénalité selon les 4 règles du standard (longues lignes unies, carrés 2×2, faux motifs de repérage, déséquilibre noir/blanc).
-6. **Format.** Le niveau de correction et le masque sont écrits deux fois, protégés par un code BCH.
+1. **Segments.** A QR code can encode digits (3 per 10 bits), uppercase alphanumerics (2 per 11 bits) or bytes. The text is split into segments by dynamic programming to minimise the total number of bits (switching modes costs a header, it's not always worth it). For non-ASCII text, an ECI header announces UTF-8; without it, some readers showed "ça" as ideograms.
+2. **Version.** The smallest of the 40 sizes where the data fits, at the requested correction level.
+3. **Error correction.** The bytes are spread into blocks, and each block gets Reed-Solomon bytes: the remainder of dividing the message by a generator polynomial, in the finite field GF(256). Then the blocks are interleaved, so that a stain on the symbol damages a little of every block rather than one whole block.
+4. **Matrix.** The fixed patterns go in first (the three finder squares, the timing lines, the small alignment squares, the version information), then the data bits in a zigzag, two columns at a time, from right to left.
+5. **Mask.** There are 8 ways to flip every other module, every third one... All of them are tried, and the one with the smallest penalty under the standard's 4 rules is kept (long solid runs, 2×2 squares, fake finder patterns, black/white imbalance).
+6. **Format.** The correction level and the mask are written twice, protected by a BCH code.
 
 ## Tests
 
-`cargo test` vérifie le corps fini et Reed-Solomon sur l'exemple classique « HELLO WORLD » en 1-M, les capacités, et la table des motifs d'alignement.
+`cargo test` checks the finite field and Reed-Solomon on the classic "HELLO WORLD" 1-M example, the capacities, and the alignment pattern table.
 
-Les vraies vérifications passent par un lecteur indépendant :
+The real checks go through an independent reader:
 
 ```
 $ python3 verifier.py 300
 453 / 453 relus à l'identique par zbarimg
 ```
 
-Le script génère 300 textes au hasard (chiffres, majuscules, ASCII, accents et emojis, mélanges), plus un symbole pour chacune des 40 versions et des 4 niveaux de correction, et vérifie que `zbarimg` relit exactement le même texte.
+The script generates 300 random texts (digits, uppercase, ASCII, accents and emoji, mixes), plus one symbol for each of the 40 versions and 4 correction levels, and checks that `zbarimg` reads back exactly the same text.
 
-## Pas fait
+## Not done
 
-Le mode kanji, les QR structurés en plusieurs symboles, les micro QR. Et pas de décodeur : c'est un autre projet, beaucoup plus dur (il faut retrouver le symbole dans une photo).
+Kanji mode, structured append over several symbols, micro QR. And no decoder: that's another project, much harder (you have to find the symbol in a photo).
